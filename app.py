@@ -4,6 +4,7 @@ import os
 import openai
 from langchain.prompts import PromptTemplate
 import pandas as pd
+import json
 
 # Load environment variables from .env file
 load_dotenv()
@@ -43,20 +44,19 @@ def generate_mcqs(text, subject, tone, num_questions):
     prompt = prompt_template.format(text=text, subject=subject, tone=tone, num_questions=num_questions)
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
-        messages=[{"role": "system", "content": prompt}],
+        messages=[{"role": "user", "content": prompt}],  # Changed "system" to "user"
         max_tokens=2000,
         temperature=0.7
     )
-    return response.choices[0].message["content"].strip()
+    return response.choices[0].message["content"].strip()  # Ensure correct content extraction
 
 # Define a function to parse the JSON response
 def parse_mcqs(mcq_json):
-    import json
-    mcq_data = json.loads(mcq_json)
+    mcq_data = json.loads(mcq_json)  # Parse JSON response correctly
     return mcq_data['questions']
 
 # Streamlit app layout
-st.title("MCQ Generator")
+st.title("MCQ Generator using OpenAI & Langchain")
 
 # File upload
 uploaded_file = st.file_uploader("Upload a text file", type="txt")
@@ -69,31 +69,32 @@ if uploaded_file is not None:
     num_questions = st.number_input("Enter the number of MCQs", min_value=1, step=1)
 
     if st.button("Generate MCQs"):
-        mcq_json = generate_mcqs(text, subject, tone, num_questions)
-        mcqs = parse_mcqs(mcq_json)
+        try:
+            mcq_json = generate_mcqs(text, subject, tone, num_questions)
+            mcqs = parse_mcqs(mcq_json)
 
-        # Display MCQs in a table
-        mcq_list = []
-        for i, mcq in enumerate(mcqs, 1):
-            options = mcq['options']
-            mcq_list.append({
-                "Question": mcq['mcq'],
-                "Option A": options["a"],
-                "Option B": options["b"],
-                "Option C": options["c"],
-                "Option D": options["d"],
-                "Correct Answer": mcq['correct']
-            })
-        
-        df_mcqs = pd.DataFrame(mcq_list)
-        st.table(df_mcqs)
+            # Display MCQs in a table
+            mcq_list = []
+            for i, mcq in enumerate(mcqs, 1):
+                options = mcq['options']
+                mcq_list.append({
+                    "Question": mcq['mcq'],
+                    "Option A": options["a"],
+                    "Option B": options["b"],
+                    "Option C": options["c"],
+                    "Option D": options["d"],
+                    "Correct Answer": mcq['correct']
+                })
+            
+            df_mcqs = pd.DataFrame(mcq_list)
+            st.table(df_mcqs)
 
-        # Provide a review mechanism
-        reviews = []
-        for i in range(num_questions):
-            review = st.selectbox(f"Review for Question {i+1}", ["Good", "Average", "Poor"], key=f"review_{i}")
-            reviews.append(review)
-        
-        if st.button("Submit Reviews"):
-            review_summary = {f"Question {i+1}": reviews[i] for i in range(num_questions)}
-            st.json(review_summary)
+            # Provide a review mechanism
+            reviews = []
+            for i in range(num_questions):
+                review = st.selectbox(f"Review for Question {i+1}", ["Good", "Average", "Poor"], key=f"review_{i}")
+                reviews.append(review)
+            
+            if st.button("Submit Reviews"):
+                review_summary = {f"Question {i+1}": reviews[i] for i in range(num_questions)}
+                st.json(review_summary)

@@ -98,3 +98,21 @@ if uploaded_file is not None:
             if st.button("Submit Reviews"):
                 review_summary = {f"Question {i+1}": reviews[i] for i in range(num_questions)}
                 st.json(review_summary)
+                
+                # Thank you message
+                st.success("Thank you for your reviews!")
+
+                # Download reviews as a JSON file
+                st.download_button(
+                    label="Download Reviews as JSON",
+                    data=json.dumps(review_summary),
+                    file_name="reviews.json",
+                    mime="application/json"
+                )
+                
+                # Provide an option to restart the process
+                # Provide an option to restart the process
+                if st.button("Restart"):
+                    st.experimental_rerun()
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
